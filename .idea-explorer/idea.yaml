@@ -1,0 +1,26 @@
+idea:
+  title: Collaborative RLVR for Robust Reasoning
+  domain: reinforcement_learning
+  hypothesis: "Making reinforcement learning with verifiable rewards (RLVR) collaborative\u2014\
+    by having two models solve mathematical reasoning tasks independently and then\
+    \ discuss before answering\u2014will force reasoning to be externalized, challenged,\
+    \ and defended, resulting in more robust and faithful reasoning compared to standard\
+    \ RLVR, which is prone to brittle behavior and exploitation of dataset patterns.\n"
+  background:
+    description: 'Reinforcement learning with verifiable rewards is a powerful way
+      to train LLMs for mathematical reasoning, but it often produces brittle behavior:
+      models exploit dataset patterns, generate unfaithful reasoning, and fail under
+      simple rephrasings or distribution shifts. The idea is that by making RLVR collaborative
+      - i.e. having two models solve independently and then discuss before answering,
+      we force reasoning to be externalized/challenged/defended, while keeping rewards
+      strictly correctness-based. If a solution has to convince another agent with
+      a different inductive bias, shallow heuristics should break, while genuinely
+      robust reasoning survives.'
+  metadata:
+    source: IdeaHub
+    source_url: https://hypogenic.ai/ideahub/idea/qW4yv2W58BojzwHGwDr6
+    idea_id: collaborative_rlvr_for_robust__20260211_231715_57725957
+    created_at: '2026-02-11T23:17:15.198798'
+    status: submitted
+    github_repo_name: collab-rlvr-reasoning-f8bd-claude
+    github_repo_url: https://github.com/Hypogenic-AI/collab-rlvr-reasoning-f8bd-claude

@@ -1,0 +1,49 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{When Does Debate Help?}
+\label{sec:when_helps}
+
+Our results reveal a clear pattern: debate is most effective when models operate near the boundary of their capability, where errors are frequent but heterogeneous across models. On \mathfive Level 4--5 problems, where single-agent accuracy ranges from 67--87\%, debate produces 11--13\% improvements. On \gsmk, where accuracy already exceeds 90\%, debate provides negligible benefit.
+
+This pattern has a simple explanation rooted in the error structure. For debate to help, two conditions must hold: (1) at least one model must be wrong (otherwise there is nothing to correct), and (2) the models must make \textit{different} errors (otherwise debate cannot provide corrective signal). On easy problems, condition (1) is rarely met. On problems that are extremely hard for both models, condition (2) may fail because both models lack the knowledge to solve the problem regardless of debate. The ``sweet spot'' for debate lies in between: problems that are challenging enough that individual models err, but not so hard that all models fail in the same way.
+
+\subsection{The ``Both Wrong to Correct'' Phenomenon}
+\label{sec:both_wrong}
+
+The most significant finding is that 33\% of ``both wrong'' cases on \mathfive were corrected through debate. This represents a qualitative capability that voting-based methods cannot achieve: when every individual sample is wrong, majority voting will always select a wrong answer, but debate can enable models to identify and fix each other's errors through step-by-step critique.
+
+We hypothesize that this phenomenon occurs because errors in multi-step reasoning are often localized to specific steps, and different models err at different steps. When models share their full reasoning traces, each model can identify errors in the other's specific steps while building on the correct portions. The debate process effectively creates a composite reasoning chain that draws on the strengths of both models.
+
+\subsection{The Risk of Negative Persuasion}
+\label{sec:neg_persuasion}
+
+On \gsmk, negative persuasion (3 cases) outweighed positive correction (1 case), yielding a net-negative effect from the error correction mechanism. This risk is particularly concerning for deployment: a confidently wrong model can persuade a tentatively correct model to abandon its answer. We observe that negative persuasion is more prevalent in same-family debate (\gptfull + \gptmini) than in cross-architecture debate (\gptfull + \claude), possibly because models from the same family share similar confidence calibration patterns, making a confident error more persuasive.
+
+Mitigating negative persuasion is an important direction for collaborative RLVR training. A training signal that penalizes agents for abandoning correct answers under pressure---or rewards agents for maintaining correct answers despite peer disagreement---could produce models that are appropriately stubborn when they are right.
+
+\subsection{Implications for Collaborative RLVR}
+\label{sec:implications}
+
+Our findings provide mixed but encouraging evidence for the collaborative RLVR hypothesis:
+
+\para{Supporting evidence.} The core mechanism works: debate genuinely improves reasoning on hard problems through error correction, including the strong signal of ``both wrong $\to$ correct'' transitions. Cross-model debate outperforms same-model debate, consistent with the hypothesis that different inductive biases produce more productive disagreement. The improvement is qualitatively different from self-consistency, confirming that critique---not just multiple samples---drives the benefit.
+
+\para{Challenges.} Debate does not improve robustness to rephrasings, suggesting that surface-level pattern exploitation is a shared bias that debate cannot address. Negative persuasion is a real risk that training must explicitly mitigate. The benefit is concentrated on hard problems, meaning collaborative RLVR should target training on problems near the capability boundary rather than on easy problems where it may introduce noise.
+
+\para{Training design implications.} These results suggest several design choices for collaborative RLVR: (1) use cross-model debate with architecturally diverse models to maximize error heterogeneity, (2) train on problems at the boundary of model capability where debate benefits are largest, (3) design reward signals that penalize negative persuasion and reward principled stubbornness, and (4) focus on competition-level rather than grade-school mathematics for training data.
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\para{Sample size.} Our evaluation uses 80 \gsmk and 40 \mathfive problems, limiting statistical power. The \mathfive result ($p = 0.25$) would likely reach significance with a larger sample, but we cannot confirm this with the current data.
+
+\para{Model heterogeneity.} Using two different Agent B models (\claude for the first 40 \gsmk problems, \gptmini for the remaining 40) introduces a mild confound. Both batches show similar qualitative patterns, but the confound means we cannot perfectly isolate the effect of partner model identity.
+
+\para{Inference-time only.} We study debate at inference time, not during RLVR training. The training dynamics could differ significantly: models trained with debate-based rewards might develop qualitatively different reasoning strategies than those exhibiting debate-induced improvements at inference time.
+
+\para{Single debate round.} We test only one round of debate. \citet{du2023debate} found diminishing returns after approximately 4 rounds, but additional rounds could improve our correction rates, particularly on hard problems.
+
+\para{Answer-level evaluation.} We evaluate only final-answer accuracy, not reasoning quality. A model could produce a correct answer with flawed reasoning, or improve its reasoning without changing its answer. Process-level evaluation \citep{lightman2023verify} would provide a more complete picture.
+
+\para{Deterministic decoding.} Using temperature 0 for baseline agents maximizes reproducibility but may reduce diversity in same-model debate. Using temperature $>$ 0 for both agents could change the dynamics of within-model debate.

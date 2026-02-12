@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "stages": {
+    "resource_finder": {
+      "success": true,
+      "completion_marker": "/workspaces/collab-rlvr-reasoning-f8bd-claude/.resource_finder_complete",
+      "outputs": {
+        "literature_review": "/workspaces/collab-rlvr-reasoning-f8bd-claude/literature_review.md",
+        "resources_catalog": "/workspaces/collab-rlvr-reasoning-f8bd-claude/resources.md",
+        "papers_dir": "/workspaces/collab-rlvr-reasoning-f8bd-claude/papers",
+        "datasets_dir": "/workspaces/collab-rlvr-reasoning-f8bd-claude/datasets",
+        "code_dir": "/workspaces/collab-rlvr-reasoning-f8bd-claude/code"
+      },
+      "log_file": "/workspaces/collab-rlvr-reasoning-f8bd-claude/logs/resource_finder_claude.log",
+      "transcript_file": "/workspaces/collab-rlvr-reasoning-f8bd-claude/logs/resource_finder_claude_transcript.jsonl",
+      "elapsed_time": 2644.751853466034
+    },
+    "experiment_runner": {
+      "success": true,
+      "return_code": 0,
+      "elapsed_time": 9603.048624515533,
+      "log_file": "/workspaces/collab-rlvr-reasoning-f8bd-claude/logs/execution_claude.log",
+      "transcript_file": "/workspaces/collab-rlvr-reasoning-f8bd-claude/logs/execution_claude_transcript.jsonl"
+    }
+  },
+  "work_dir": "/workspaces/collab-rlvr-reasoning-f8bd-claude"
+}

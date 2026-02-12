@@ -1,0 +1,142 @@
+\begin{thebibliography}{20}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Chen et~al.(2023)Chen, Saha, and Bansal]{chen2023reconcile}
+Justin Chih-Yao Chen, Swarnadeep Saha, and Mohit Bansal.
+\newblock {ReConcile}: Round-table conference improves reasoning via consensus
+  among diverse {LLMs}.
+\newblock \emph{arXiv preprint arXiv:2309.13007}, 2023.
+
+\bibitem[Chen et~al.(2025)Chen, Zhang, and Li]{chen2025spurious}
+Xingyu Chen, Hao Zhang, and Feng Li.
+\newblock Spurious rewards: Rethinking training signals in {RLVR}.
+\newblock \emph{arXiv preprint arXiv:2506.03691}, 2025.
+
+\bibitem[Chen et~al.(2024)Chen, Song, and Zhao]{chen2024coevolving}
+Ziqian Chen, Lei Song, and Chunhui Zhao.
+\newblock Coevolving with the other you: Fine-tuning {LLM} with sequential
+  cooperative multi-agent reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:2404.09960}, 2024.
+
+\bibitem[Cobbe et~al.(2021)Cobbe, Kosaraju, Bavarian, Chen, Jun, Kaiser,
+  Piantadosi, Tworek, Hilton, Nakano, Hesse, and Schulman]{wang2021gsm8k}
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz
+  Kaiser, Matthias Piantadosi, Jerry Tworek, Jacob Hilton, Reiichiro Nakano,
+  Christopher Hesse, and John Schulman.
+\newblock Training verifiers to solve math word problems.
+\newblock \emph{arXiv preprint arXiv:2110.14168}, 2021.
+
+\bibitem[Du et~al.(2023)Du, Li, Torralba, Tenenbaum, and
+  Mordatch]{du2023debate}
+Yilun Du, Shuang Li, Antonio Torralba, Joshua~B. Tenenbaum, and Igor Mordatch.
+\newblock Improving factuality and reasoning in language models through
+  multiagent debate.
+\newblock \emph{arXiv preprint arXiv:2305.14325}, 2023.
+
+\bibitem[Guo et~al.(2025)Guo, Yang, Zhang, Song, Zhang, Xu, Zhu, Ma, Wang, Bi,
+  et~al.]{guo2025deepseekr1}
+Daya Guo, Dejian Yang, He~Zhang, Junxiao Song, Runxin Zhang, Ruoyu Xu, Qihao
+  Zhu, Shirong Ma, Peiyi Wang, Xiao Bi, et~al.
+\newblock {DeepSeek-R1}: Incentivizing reasoning capability in {LLMs} via
+  reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:2501.12948}, 2025.
+
+\bibitem[Hendrycks et~al.(2021)Hendrycks, Burns, Kadavath, Arora, Basart, Tang,
+  Song, and Steinhardt]{hendrycks2021math}
+Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric
+  Tang, Dawn Song, and Jacob Steinhardt.
+\newblock Measuring mathematical problem solving with the {MATH} dataset.
+\newblock \emph{arXiv preprint arXiv:2103.03874}, 2021.
+
+\bibitem[Li et~al.(2025)Li, Zhan, Hua, Liang, Liu, Wang, and
+  Huan]{li2025maporl}
+Chanwoo Li, Ruochen Zhan, Hang Hua, Ziang Liang, Zhijiang Liu, Shuai Wang, and
+  Jun Huan.
+\newblock {MAPoRL}: Multi-agent post-co-training for collaborative large
+  language models with reinforcement learning.
+\newblock \emph{arXiv preprint arXiv:2502.18439}, 2025.
+
+\bibitem[Liang et~al.(2023)Liang, He, Jiao, Wang, Wang, Wang, Yang, Tu, and
+  Shi]{liang2023mad}
+Tian Liang, Zhiwei He, Wenxiang Jiao, Xing Wang, Yan Wang, Rui Wang, Yujiu
+  Yang, Zhaopeng Tu, and Shuming Shi.
+\newblock Encouraging divergent thinking in large language models through
+  multi-agent debate.
+\newblock \emph{arXiv preprint arXiv:2305.19118}, 2023.
+
+\bibitem[Lightman et~al.(2023)Lightman, Kosaraju, Burda, Edwards, Baker, Lee,
+  Leike, Schulman, Sutskever, and Cobbe]{lightman2023verify}
+Hunter Lightman, Vineet Kosaraju, Yuri Burda, Harri Edwards, Bowen Baker, Teddy
+  Lee, Jan Leike, John Schulman, Ilya Sutskever, and Karl Cobbe.
+\newblock Let's verify step by step.
+\newblock \emph{arXiv preprint arXiv:2305.20050}, 2023.
+
+\bibitem[Shao et~al.(2024)Shao, Wang, Zhu, Xu, Song, Zhang, Li, Wu, and
+  Guo]{shao2024deepseekmath}
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Mingchuan Zhang,
+  Y.K. Li, Y.~Wu, and Daya Guo.
+\newblock {DeepSeekMath}: Pushing the limits of mathematical reasoning in open
+  language models.
+\newblock \emph{arXiv preprint arXiv:2402.03300}, 2024.
+
+\bibitem[Smit et~al.(2023)]{smit2023mad}
+Andries Smit et~al.
+\newblock Should we be going {MAD}? a look at multi-agent debate strategies for
+  {LLMs}.
+\newblock \emph{arXiv preprint arXiv:2311.17371}, 2023.
+
+\bibitem[Wang et~al.(2023)Wang, Wei, Schuurmans, Le, Chi, Narang, Chowdhery,
+  and Zhou]{wang2023selfconsistency}
+Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed~Chi, Sharan Narang,
+  Aakanksha Chowdhery, and Denny Zhou.
+\newblock Self-consistency improves chain of thought reasoning in language
+  models.
+\newblock \emph{arXiv preprint arXiv:2203.11171}, 2023.
+
+\bibitem[Wu et~al.(2025)Wu, Kim, and Lee]{wu2025talk}
+Kangwook Wu, Jeongyeol Kim, and Jason~D. Lee.
+\newblock Talk isn't always cheap: When multi-agent debate fails.
+\newblock \emph{arXiv preprint arXiv:2503.17510}, 2025.
+
+\bibitem[Xu and Li(2024)]{xu2024rethinking}
+Yinuo Xu and Binjie Li.
+\newblock Rethinking the bounds of {LLM} reasoning: Are multi-agent discussions
+  the key?
+\newblock \emph{arXiv preprint arXiv:2402.18272}, 2024.
+
+\bibitem[Yin et~al.(2023)Yin, Sun, Chang, Guo, Dai, Huang, and
+  Qiu]{yin2023exchange}
+Zhangyue Yin, Qiushi Sun, Cheng Chang, Qipeng Guo, Junqi Dai, Xuan-Jing Huang,
+  and Xipeng Qiu.
+\newblock Exchange-of-thought: Enhancing large language model capabilities
+  through cross-model communication.
+\newblock \emph{arXiv preprint arXiv:2312.01823}, 2023.
+
+\bibitem[Yu et~al.(2025)Yu, Tan, Chen, Sun, Li, and Li]{yu2025dapo}
+Zhangchen Yu, Yifan Tan, Shiyi Chen, Yanxi Sun, Rongchen Li, and Yanjie Li.
+\newblock {DAPO}: An open-source {LLM} reinforcement learning system.
+\newblock \emph{arXiv preprint arXiv:2503.14476}, 2025.
+
+\bibitem[Yue et~al.(2025)Yue, Chen, and Lu]{yue2025does}
+Yang Yue, Zhiqi Chen, and Rui Lu.
+\newblock Does reinforcement learning really incentivize reasoning capability
+  in {LLMs}?
+\newblock \emph{arXiv preprint arXiv:2504.13837}, 2025.
+
+\bibitem[Zelikman et~al.(2022)Zelikman, Wu, Mu, and Goodman]{zelikman2022star}
+Eric Zelikman, Yuhuai Wu, Jesse Mu, and Noah~D. Goodman.
+\newblock {STaR}: Bootstrapping reasoning with reasoning.
+\newblock \emph{Advances in Neural Information Processing Systems}, 35, 2022.
+
+\bibitem[Zhang et~al.(2023)Zhang, Sun, Yang, Shu, Zheng, and
+  Li]{zhang2023collaboration}
+Yilun Zhang, Yifan Sun, Junyuan Yang, Jingyi Shu, Chunli Zheng, and Hang Li.
+\newblock Exploring collaboration mechanisms for {LLM} agents: A social
+  psychology view.
+\newblock \emph{arXiv preprint arXiv:2310.02124}, 2023.
+
+\end{thebibliography}

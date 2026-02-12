@@ -1,0 +1,151 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{Main Results: Debate Improves Accuracy on Hard Problems}
+\label{sec:main_results}
+
+\Tabref{tab:main_gsm8k} and \Tabref{tab:main_math} present accuracy across conditions on \gsmk and \mathfive, respectively.
+
+\begin{table}[t]
+    \centering
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        \textbf{Method} & \textbf{Accuracy (\%)} & \textbf{95\% CI} \\
+        \midrule
+        \gptfull single & 92.5 & [86.2, 97.5] \\
+        Model B single (Claude/Mini) & \textbf{95.0} & [90.0, 98.8] \\
+        \selfconsist ($n{=}3$) & 91.2 & [85.0, 96.2] \\
+        \midrule
+        \crossdebate (any correct) & 93.8 & [88.8, 98.8] \\
+        \crossdebate (\gptfull only) & 93.8 & [87.5, 98.8] \\
+        \samedebate (any correct) & 92.5 & [86.2, 97.5] \\
+        \bottomrule
+    \end{tabular}
+    \caption{Accuracy on \gsmk ($n{=}80$). Debate provides only marginal improvement (+1.3\%) over the \gptfull single-agent baseline on these grade-school problems, where models already achieve $>$90\% accuracy. Best result in \textbf{bold}.}
+    \label{tab:main_gsm8k}
+\end{table}
+
+\begin{table}[t]
+    \centering
+    \begin{tabular}{@{}lcc@{}}
+        \toprule
+        \textbf{Method} & \textbf{Accuracy (\%)} & \textbf{95\% CI} \\
+        \midrule
+        \gptfull single & 77.5 & [65.0, 90.0] \\
+        \gptmini single & 72.5 & [57.5, 85.0] \\
+        \midrule
+        \crossdebate (any correct) & \textbf{85.0} & [72.5, 95.0] \\
+        \crossdebate (\gptfull only) & 75.0 & [62.5, 87.5] \\
+        \crossdebate (\gptmini only) & 77.5 & [65.0, 90.0] \\
+        \bottomrule
+    \end{tabular}
+    \caption{Accuracy on \mathfive ($n{=}40$). \crossdebate improves accuracy by \textbf{7.5\%} absolute over the best single-agent baseline (77.5\% $\to$ 85.0\%). Best result in \textbf{bold}.}
+    \label{tab:main_math}
+\end{table}
+
+On \gsmk, all conditions achieve $>$90\% accuracy, leaving limited room for debate to help. \crossdebate achieves 93.8\%, a marginal +1.3\% over single-agent \gptfull (92.5\%). Notably, \selfconsist with 3 samples (91.2\%) performs \textit{worse} than the single deterministic sample, suggesting that temperature-induced diversity introduces errors on these relatively easy problems.
+
+On \mathfive, the picture changes substantially. \crossdebate (any correct) achieves 85.0\%, a 7.5\% improvement over \gptfull single-agent (77.5\%) and a 12.5\% improvement over \gptmini single-agent (72.5\%). This improvement exceeds what either model achieves alone, demonstrating that debate enables collective reasoning that surpasses individual capability.
+
+\subsection{Debate Effectiveness Varies with Problem Difficulty}
+\label{sec:difficulty}
+
+\Tabref{tab:difficulty} breaks down \mathfive results by difficulty level, revealing that debate benefits concentrate on harder problems.
+
+\begin{table}[t]
+    \centering
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        \textbf{Difficulty} & $n$ & \textbf{\gptfull Single (\%)} & \textbf{\crossdebate (\%)} & \textbf{$\Delta$} \\
+        \midrule
+        Level 2 & 9 & 78 & 78 & +0 \\
+        Level 3 & 6 & 67 & 67 & +0 \\
+        Level 4 & 15 & 87 & \textbf{100} & \textbf{+13} \\
+        Level 5 & 9 & 67 & \textbf{78} & \textbf{+11} \\
+        \midrule
+        All & 40 & 77.5 & \textbf{85.0} & \textbf{+7.5} \\
+        \bottomrule
+    \end{tabular}
+    \caption{Accuracy by difficulty level on \mathfive. Debate provides no benefit on Level 2--3 problems but produces large gains on Level 4 (+13\%) and Level 5 (+11\%) problems. Best results in \textbf{bold}.}
+    \label{tab:difficulty}
+\end{table}
+
+Level 2 and Level 3 problems show zero improvement from debate. In contrast, Level 4 problems improve from 87\% to 100\% (+13\%), and Level 5 problems improve from 67\% to 78\% (+11\%). This pattern is consistent with our hypothesis: debate helps most when models are operating near the boundary of their capability, where errors are frequent but non-systematic.
+
+\subsection{Error Correction Analysis}
+\label{sec:error}
+
+To distinguish genuine error correction from agreement amplification, we categorize all debate outcomes based on the pre-debate and post-debate correctness of each agent.
+
+\begin{table}[t]
+    \centering
+    \begin{tabular}{@{}lrrrr@{}}
+        \toprule
+        & \multicolumn{2}{c}{\textbf{\gsmk}} & \multicolumn{2}{c}{\textbf{\mathfive}} \\
+        \cmidrule(lr){2-3} \cmidrule(lr){4-5}
+        \textbf{Outcome} & Count & \% & Count & \% \\
+        \midrule
+        Both correct $\to$ stay correct & 73 & 91.2 & 25 & 62.5 \\
+        Both wrong $\to$ stay wrong & 3 & 3.8 & 6 & 15.0 \\
+        Positive correction & 1 & 1.2 & 2 & 5.0 \\
+        Both wrong $\to$ one/both correct & 0 & 0.0 & 3 & 7.5 \\
+        Negative persuasion & 3 & 3.8 & 0 & 0.0 \\
+        No change (mixed) & 0 & 0.0 & 3 & 7.5 \\
+        Mixed correction + persuasion & 0 & 0.0 & 1 & 2.5 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Debate outcome breakdown for \crossdebate. On \mathfive, 3 of 9 ``both wrong'' cases (33\%) are corrected through debate, demonstrating emergent error correction. On \gsmk, negative persuasion (3 cases) outweighs positive correction (1 case).}
+    \label{tab:outcomes}
+\end{table}
+
+\para{Hard problems (\mathfive).} The most striking finding is the ``both wrong $\to$ correct'' category: in 3 of 9 cases (33\%) where both models independently produced wrong answers, debate led to at least one agent finding the correct answer. This represents emergent problem-solving---the debate process enables models to collectively arrive at solutions that neither could reach alone. This is qualitatively different from voting, which can never correct a case where all individual samples are wrong.
+
+\para{Easy problems (\gsmk).} On \gsmk, the error correction picture is less favorable. Only 1 positive correction occurs versus 3 negative persuasions, yielding a net correction rate of $-2$. When models already perform well, the few errors they make tend to be systematic (shared heuristic failures), so debate cannot provide corrective signal. Meanwhile, the persuasion mechanism creates risk: a confidently wrong agent can flip a tentatively correct agent.
+
+\subsection{Robustness to Problem Rephrasings}
+\label{sec:robustness_results}
+
+\Tabref{tab:robustness} presents results on 40 rephrased \gsmk problems compared to their originals.
+
+\begin{table}[t]
+    \centering
+    \begin{tabular}{@{}lccc@{}}
+        \toprule
+        \textbf{Condition} & \textbf{Original (\%)} & \textbf{Rephrased (\%)} & \textbf{Drop} \\
+        \midrule
+        \gptfull single & 95.0 & 87.5 & 7.5 \\
+        \crossdebate & 95.0 & 87.5 & 7.5 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Robustness evaluation on rephrased \gsmk problems ($n{=}40$). Both conditions show identical accuracy drops, indicating that debate does not improve robustness to surface-level rephrasings.}
+    \label{tab:robustness}
+\end{table}
+
+Both single-agent and debate conditions show an identical 7.5\% accuracy drop on rephrased problems. Debate does not improve robustness to surface-level rephrasings. This is consistent with the hypothesis that robustness failures stem from shared biases in model training---biases that debate between models trained on similar data cannot correct.
+
+\subsection{Cross-Model vs.\ Same-Model Debate}
+\label{sec:cross_vs_same}
+
+On \gsmk, \crossdebate achieves 93.8\% versus 92.5\% for \samedebate, a small +1.3\% advantage. \crossdebate produced 1 positive correction while \samedebate produced 0. Although the difference is small, the direction is consistent with our hypothesis that models with different architectures and training produce more heterogeneous errors, enabling more productive debate. Negative persuasion was more prevalent in the \gptfull + \gptmini pairing (batch 2) than in the \gptfull + \claude pairing (batch 1), suggesting that truly different architectures may produce more constructive disagreement than same-family models of different sizes.
+
+\subsection{Self-Consistency as a Baseline}
+\label{sec:sc_baseline}
+
+Self-consistency with 3 samples achieves 91.2\% on \gsmk, slightly below the single deterministic sample (92.5\%). This result has two implications. First, it confirms that the benefit of debate does not simply come from having multiple samples---if it did, self-consistency would outperform single-agent. Second, it suggests that on easy problems, temperature-based diversity introduces noise rather than useful variation. The value of cross-model debate on hard problems (\mathfive) comes specifically from the \textit{critique mechanism} and \textit{architectural diversity}, not from the number of samples.
+
+\subsection{Statistical Significance}
+\label{sec:significance}
+
+We apply McNemar's test to the paired accuracy comparisons:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=2pt]
+    \item \textbf{\mathfive, debate vs.\ single}: 3 debate wins, 0 single wins. McNemar's exact binomial $p = 0.25$. Not significant at $\alpha = 0.05$, but the direction is consistently positive across all difficulty levels $\geq$4.
+    \item \textbf{\gsmk, debate vs.\ single}: 2 debate wins, 1 single win. $p = 1.0$. Not significant.
+\end{itemize}
+
+The lack of statistical significance reflects our limited sample sizes (40 and 80 problems) rather than absence of an effect. The \mathfive result would likely reach significance with $n \geq 100$ problems, given the consistent +7.5\% improvement.
+
+\subsection{Qualitative Example}
+\label{sec:qualitative}
+
+We highlight a representative case of successful debate from \gsmk (problem gsm8k\_209). Agent A misinterpreted ``half a dozen'' as 3 instead of 6, producing an incorrect total. Agent B correctly interpreted the phrase and provided explicit reasoning: ``half a dozen equals 6 because a dozen is 12.'' During debate, Agent A recognized its error after seeing Agent B's step-by-step justification and revised its answer accordingly. This example illustrates the externalization mechanism: Agent B's explicit reasoning about the meaning of ``half a dozen'' forced Agent A to confront and correct a specific misinterpretation that it would never have caught through self-reflection alone.

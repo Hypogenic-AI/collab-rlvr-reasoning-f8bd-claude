@@ -1,0 +1,143 @@
+{
+  "gsm8k": {
+    "accuracy_table": {
+      "GPT-4.1 single": {
+        "mean": 0.925,
+        "ci_lo": 0.8625,
+        "ci_hi": 0.975,
+        "n_correct": 74,
+        "n": 80
+      },
+      "Claude single": {
+        "mean": 0.95,
+        "ci_lo": 0.9,
+        "ci_hi": 0.9875,
+        "n_correct": 76,
+        "n": 80
+      },
+      "Self-consist(3)": {
+        "mean": 0.9125,
+        "ci_lo": 0.85,
+        "ci_hi": 0.9625,
+        "n_correct": 73,
+        "n": 80
+      },
+      "Cross-debate (any)": {
+        "mean": 0.9375,
+        "ci_lo": 0.8875,
+        "ci_hi": 0.9875,
+        "n_correct": 75,
+        "n": 80
+      },
+      "Cross-debate (GPT)": {
+        "mean": 0.9375,
+        "ci_lo": 0.875,
+        "ci_hi": 0.9875,
+        "n_correct": 75,
+        "n": 80
+      },
+      "Cross-debate (Claude)": {
+        "mean": 0.925,
+        "ci_lo": 0.8625,
+        "ci_hi": 0.975,
+        "n_correct": 74,
+        "n": 80
+      },
+      "Same-debate (any)": {
+        "mean": 0.925,
+        "ci_lo": 0.8625,
+        "ci_hi": 0.975,
+        "n_correct": 74,
+        "n": 80
+      }
+    },
+    "tests": {
+      "single_vs_cross": {
+        "chi2": 0.0,
+        "p_value": 1.0,
+        "b_wins": 2,
+        "a_wins": 1
+      },
+      "single_vs_same": {
+        "chi2": 0.5,
+        "p_value": 0.47950012218695337,
+        "b_wins": 1,
+        "a_wins": 1
+      },
+      "sc3_vs_cross": {
+        "chi2": 0.25,
+        "p_value": 0.6170750774519739,
+        "b_wins": 3,
+        "a_wins": 1
+      }
+    },
+    "outcomes": {
+      "both_wrong_stay": 3,
+      "both_correct_stay": 73,
+      "positive_correction": 1,
+      "negative_persuasion": 3
+    },
+    "error_correction": {
+      "pos_corr": 1,
+      "neg_pers": 3,
+      "both_wrong_to_corr": 0,
+      "mixed": 0,
+      "net": -2
+    }
+  },
+  "math500": {
+    "accuracy_table": {
+      "GPT-4.1 single": {
+        "mean": 0.775,
+        "ci_lo": 0.65,
+        "ci_hi": 0.9
+      },
+      "Claude single": {
+        "mean": 0.725,
+        "ci_lo": 0.575,
+        "ci_hi": 0.85
+      },
+      "Cross-debate (any)": {
+        "mean": 0.85,
+        "ci_lo": 0.725,
+        "ci_hi": 0.95
+      },
+      "Cross-debate (GPT)": {
+        "mean": 0.75,
+        "ci_lo": 0.625,
+        "ci_hi": 0.875
+      },
+      "Cross-debate (Claude)": {
+        "mean": 0.775,
+        "ci_lo": 0.65,
+        "ci_hi": 0.9
+      }
+    },
+    "tests": {
+      "single_vs_cross": {
+        "chi2": 1.3333333333333333,
+        "p_value": 0.24821307898992362,
+        "b_wins": 3,
+        "a_wins": 0
+      }
+    },
+    "outcomes": {
+      "both_correct_stay": 25,
+      "both_wrong_stay": 6,
+      "no_change": 3,
+      "positive_correction": 2,
+      "mixed": 1,
+      "both_wrong_to_correct": 3
+    }
+  },
+  "robustness": {
+    "single_orig": 0.95,
+    "single_rep": 0.875,
+    "single_drop": 0.07499999999999996,
+    "debate_orig": 0.95,
+    "debate_rep": 0.875,
+    "debate_drop": 0.07499999999999996,
+    "drop_diff": 0.0,
+    "p_value": NaN
+  }
+}

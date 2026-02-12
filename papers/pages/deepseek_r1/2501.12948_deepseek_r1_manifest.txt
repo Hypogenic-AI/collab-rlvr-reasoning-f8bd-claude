@@ -1,0 +1,23 @@
+PDF: /workspaces/collab-rlvr-reasoning-f8bd-claude/papers/2501.12948_deepseek_r1.pdf
+Total pages: 86
+Pages per chunk: 5
+
+Chunks:
+  2501.12948_deepseek_r1_chunk_001.pdf: pages 1-5
+  2501.12948_deepseek_r1_chunk_002.pdf: pages 6-10
+  2501.12948_deepseek_r1_chunk_003.pdf: pages 11-15
+  2501.12948_deepseek_r1_chunk_004.pdf: pages 16-20
+  2501.12948_deepseek_r1_chunk_005.pdf: pages 21-25
+  2501.12948_deepseek_r1_chunk_006.pdf: pages 26-30
+  2501.12948_deepseek_r1_chunk_007.pdf: pages 31-35
+  2501.12948_deepseek_r1_chunk_008.pdf: pages 36-40
+  2501.12948_deepseek_r1_chunk_009.pdf: pages 41-45
+  2501.12948_deepseek_r1_chunk_010.pdf: pages 46-50
+  2501.12948_deepseek_r1_chunk_011.pdf: pages 51-55
+  2501.12948_deepseek_r1_chunk_012.pdf: pages 56-60
+  2501.12948_deepseek_r1_chunk_013.pdf: pages 61-65
+  2501.12948_deepseek_r1_chunk_014.pdf: pages 66-70
+  2501.12948_deepseek_r1_chunk_015.pdf: pages 71-75
+  2501.12948_deepseek_r1_chunk_016.pdf: pages 76-80
+  2501.12948_deepseek_r1_chunk_017.pdf: pages 81-85
+  2501.12948_deepseek_r1_chunk_018.pdf: page 86

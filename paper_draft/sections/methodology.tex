@@ -1,0 +1,82 @@
+\section{Methodology}
+\label{sec:method}
+
+\subsection{Experimental Design}
+\label{sec:design}
+
+We compare four conditions on identical problem sets to isolate the effect of debate on mathematical reasoning:
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt,topsep=2pt]
+    \item \textbf{Single-agent}: Each model solves problems independently with chain-of-thought (CoT) prompting at temperature 0.
+    \item \textbf{Self-consistency}: Majority vote over 3 CoT samples from \gptfull at temperature 0.7 \citep{wang2023selfconsistency}.
+    \item \textbf{Cross-model debate}: Two different models solve independently, then critique each other's solutions and revise their answers.
+    \item \textbf{Same-model debate}: \gptfull (temperature 0) debates with \gptfull (temperature 0.7) to introduce diversity while controlling for architecture.
+\end{enumerate}
+
+This design enables several targeted comparisons. Single-agent vs.\ debate isolates the effect of peer critique. Self-consistency vs.\ debate distinguishes the value of diverse critique from the value of multiple samples. Cross-model vs.\ same-model debate tests whether architecturally different models produce more productive disagreement.
+
+\subsection{Debate Protocol}
+\label{sec:protocol}
+
+The debate proceeds in two rounds:
+
+\para{Round 0 (Independent).} Both models receive the same problem with a CoT prompt instructing them to solve it step by step. Each model produces an independent solution and answer. No communication occurs in this round.
+
+\para{Round 1 (Debate).} Each model receives the other's Round 0 solution alongside its own, and is prompted to: (a) examine both solutions for correctness, (b) identify any errors in either solution, and (c) defend or revise its answer with clear reasoning. The final answer is extracted from each model's Round 1 response.
+
+We use a single debate round based on prior findings that additional rounds yield diminishing returns \citep{du2023debate}. The ``any correct'' metric considers debate successful if at least one agent produces the correct answer after debate.
+
+\subsection{Datasets}
+\label{sec:datasets}
+
+We evaluate on two mathematical reasoning benchmarks spanning different difficulty levels:
+
+\para{\gsmk \citep{wang2021gsm8k}.} 80 randomly sampled test problems (seed=42) involving grade-school multi-step arithmetic. Problems use the \texttt{\#\#\#\# N} format for answers, which we extract via regex with fallback to natural language patterns. Baseline model accuracy exceeds 90\%, providing a ceiling-effect setting where debate has limited room to help.
+
+\para{\mathfive \citep{hendrycks2021math}.} 40 randomly sampled problems from MATH-500, spanning competition-level mathematics across difficulty levels 2--5 and subjects including algebra, precalculus, and number theory. Answers use the \texttt{\textbackslash boxed\{...\}} format, extracted with nested-brace-aware parsing. Baseline accuracy ranges from 67--87\% depending on difficulty level, providing a more challenging setting for evaluating debate.
+
+\subsection{Models}
+\label{sec:models}
+
+We use three models to construct debate pairs with different levels of architectural diversity:
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{@{}llll@{}}
+        \toprule
+        \textbf{Model} & \textbf{Provider} & \textbf{Role} & \textbf{Temperature} \\
+        \midrule
+        \gptfull & OpenAI & Primary agent (Agent A) & 0.0 \\
+        \gptmini & OpenAI & Cross-model partner & 0.0 \\
+        \claude & OpenRouter & Cross-model partner & 0.0 \\
+        \gptfull & OpenAI & Same-model partner & 0.7 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Models used in our experiments. \gptfull serves as the primary agent across all conditions. Cross-model debate partners differ in architecture and training, providing diverse inductive biases.}
+    \label{tab:models}
+\end{table}
+
+For cross-model debate on \gsmk, the first 40 problems used \claude as Agent B, while the remaining 40 used \gptmini due to API quota constraints. Both configurations provide valid cross-model debate since the partner models differ from \gptfull in architecture and training. All \mathfive experiments used \gptmini as Agent B.
+
+\subsection{Evaluation Metrics}
+\label{sec:metrics}
+
+We evaluate debate effectiveness along multiple dimensions:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt,topsep=2pt]
+    \item \textbf{Accuracy}: Percentage of problems with a correct final answer.
+    \item \textbf{Debate ``any correct''}: At least one agent produces the correct answer after debate, measuring collective reasoning capacity.
+    \item \textbf{Error correction rate}: Fraction of cases where both models were independently wrong but debate produced a correct answer.
+    \item \textbf{Negative persuasion rate}: Fraction of cases where an initially correct agent was persuaded to adopt a wrong answer.
+    \item \textbf{Robustness drop}: Accuracy decrease on rephrased versions of the same problems.
+\end{itemize}
+
+\subsection{Statistical Analysis}
+\label{sec:stats}
+
+We use McNemar's test for paired accuracy comparisons on the same problem set, with exact binomial computation for small sample sizes. Bootstrap confidence intervals (95\%) are computed with 1,000 resamples. We report effect sizes and note that our sample sizes (80 and 40 problems) limit statistical power, particularly for the \mathfive evaluation.
+
+\subsection{Robustness Evaluation}
+\label{sec:robustness}
+
+To test whether debate improves reasoning robustness, we evaluate on 40 rephrased \gsmk problems. Each problem is rephrased to preserve the mathematical structure while changing surface-level features (names, numbers, context). We compare accuracy drops between single-agent and debate conditions on original vs.\ rephrased problems.

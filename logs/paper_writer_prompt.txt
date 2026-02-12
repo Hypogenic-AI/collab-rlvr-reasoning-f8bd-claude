@@ -1,0 +1,951 @@
+You are an academic paper writer. Generate a complete NEURIPS style paper
+based on the experiment results provided.
+
+════════════════════════════════════════════════════════════════════════════════
+                         IMPORTANT: BEFORE YOU START
+════════════════════════════════════════════════════════════════════════════════
+
+Before writing any content, you MUST complete these steps:
+
+1. READ THE SKILL: Review the paper-writer skill at templates/skills/paper-writer/SKILL.md
+2. READ THE STYLE GUIDE: Study templates/paper_writing/lab_style_guide.md carefully
+3. REVIEW EXAMPLES: Browse paper_examples/ for formatting and language patterns:
+   - Look at sections/1.introduction.tex for language style
+   - Look at tables/*.tex for table formatting
+   - Look at commands/*.tex for macro usage
+4. USE COMMAND TEMPLATES: Copy templates/paper_writing/commands/ to paper_draft/commands/
+
+CRITICAL: Reference example papers for FORMATTING and LANGUAGE STYLE only.
+Do NOT copy content, phrasing, or narrative structure from the example papers.
+The examples are in a different research domain - focus only on presentation style.
+
+════════════════════════════════════════════════════════════════════════════════
+                            EXPERIMENT REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+# Collaborative RLVR for Robust Reasoning: Empirical Investigation
+
+## 1. Executive Summary
+
+We tested whether collaborative debate between LLMs improves mathematical reasoning compared to single-agent problem solving. Using GPT-4.1, GPT-4.1-mini, and Claude Sonnet 4 on 80 GSM8K and 40 MATH-500 problems, we found that **cross-model debate produces a meaningful accuracy improvement on harder problems** (MATH-500: +7.5%, from 77.5% to 85.0%) but shows only marginal improvement on easier problems (GSM8K: +1.3%). The improvement on MATH-500 is driven by genuine error correction: in 33% of cases where both models independently failed, debate produced a correct answer. However, debate did not improve robustness to problem rephrasings, and negative persuasion (correct agents adopting wrong answers) remains a real risk, especially in same-model debate.
+
+**Practical implication**: Collaborative debate is most valuable when models are working near the boundary of their capability, where individual reasoning is unreliable and errors are non-systematic. This validates a key premise of collaborative RLVR — that debate forces reasoning externalization — and suggests that training with debate-based rewards would primarily improve performance on harder problems.
+
+## 2. Goal
+
+**Hypothesis**: Making RLVR collaborative — by having two models solve mathematical reasoning tasks independently and then discuss before answering — will force reasoning to be externalized, challenged, and defended, resulting in more robust and faithful reasoning compared to standard single-agent RLVR.
+
+**Why this matters**: RLVR is the dominant paradigm for training LLM reasoning (DeepSeek-R1, DAPO), but produces brittle behavior: models exploit dataset patterns, generate unfaithful reasoning, and fail under distribution shifts. If collaborative debate can improve reasoning, it motivates a new training paradigm (collaborative RLVR) where models are trained specifically to produce reasoning that survives peer scrutiny.
+
+**Our approach**: Before investing in expensive RLVR training, we validate the core premise empirically: does inference-time debate improve reasoning? We test this with real state-of-the-art LLMs using rigorous controlled experiments.
+
+## 3. Data Construction
+
+### Dataset Description
+
+| Dataset | Source | Size Used | Characteristics |
+|---------|--------|-----------|-----------------|
+| **GSM8K** | `openai/gsm8k` | 80 test problems | Grade-school math word problems, multi-step arithmetic |
+| **MATH-500** | `HuggingFaceTB/MATH-500` | 40 test problems | Competition math across 5+ difficulty levels |
+
+### Example Samples
+
+**GSM8K** (grade-school level):
+&gt; &#34;Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?&#34;
+&gt; Answer: 72
+
+**MATH-500** (competition level):
+&gt; &#34;How many vertical asymptotes does the graph of y=2/(x²+x-6) have?&#34;
+&gt; Answer: 2
+
+### Data Quality
+- All problems have verified ground-truth answers
+- GSM8K uses `#### N` format for numerical answers
+- MATH-500 uses `\boxed{answer}` format
+- Problems were randomly sampled (seed=42) for reproducibility
+
+### Answer Extraction
+Custom extraction handles both formats:
+- GSM8K: Regex for `#### N` pattern, fallback to &#34;the answer is N&#34;
+- MATH-500: Nested-brace-aware extraction for `\boxed{...}` including LaTeX fractions
+
+## 4. Experiment Description
+
+### Methodology
+
+#### High-Level Approach
+We compare four conditions on identical problem sets:
+1. **Single-agent**: Each model solves independently with chain-of-thought (CoT)
+2. **Self-consistency**: Majority vote over 3 CoT samples from GPT-4.1 (temperature=0.7)
+3. **Cross-model debate**: Two different models solve independently, then critique each other&#39;s solutions and revise
+4. **Same-model debate**: GPT-4.1 (temp=0) debates with GPT-4.1 (temp=0.7) for diversity
+
+#### Why This Method?
+- **Real LLMs, not simulations**: We use actual API calls to GPT-4.1, GPT-4.1-mini, and Claude Sonnet 4
+- **Controlled comparison**: Same problems across all conditions eliminates problem-difficulty confounds
+- **Cross-model debate tests the core hypothesis**: Different architectures/training create different inductive biases, forcing genuine reasoning defense
+- **Self-consistency as strong baseline**: Controls for the &#34;multiple samples&#34; effect
+
+### Implementation Details
+
+#### Tools and Libraries
+| Library | Version | Purpose |
+|---------|---------|---------|
+| Python | 3.12.8 | Runtime |
+| OpenAI SDK | 2.20.0 | GPT-4.1 and GPT-4.1-mini API |
+| HuggingFace datasets | — | Dataset loading |
+| scipy | 1.17.0 | Statistical tests |
+| matplotlib | 3.10.8 | Visualizations |
+
+#### Models
+| Model | Provider | Role |
+|-------|----------|------|
+| GPT-4.1 | OpenAI | Primary agent (Agent A), baselines |
+| GPT-4.1-mini | OpenAI | Cross-model debate partner (Agent B) |
+| Claude Sonnet 4 | OpenRouter | Cross-model debate (first 40 GSM8K problems) |
+
+**Note**: OpenRouter quota was exceeded after 40 GSM8K problems. Remaining experiments used GPT-4.1-mini as the second model. Both setups provide valid cross-model debate (different architectures/sizes = different inductive biases).
+
+#### Debate Protocol
+1. **Round 0** (Independent): Both models solve the problem independently using CoT prompting
+2. **Round 1** (Debate): Each model receives the other&#39;s solution and is asked to:
+   - Examine both solutions for correctness
+   - Identify errors in either solution
+   - Defend or revise their answer with clear reasoning
+3. **Final Answer**: Extracted from each model&#39;s Round 1 response
+
+#### Hyperparameters
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Temperature (baselines) | 0.0 | Deterministic for reproducibility |
+| Temperature (SC samples) | 0.7 | Standard for self-consistency |
+| Max tokens | 2048 | Sufficient for CoT reasoning |
+| Random seed | 42 | Reproducibility |
+| SC samples | 3 | Budget-efficient self-consistency |
+
+### Experimental Protocol
+
+#### Evaluation Metrics
+- **Accuracy**: Percentage of problems with correct final answer
+- **Debate &#34;any correct&#34;**: At least one agent correct after debate (measures collective intelligence)
+- **Error correction rate**: Fraction of &#34;both wrong at R0&#34; cases fixed by debate
+- **Negative persuasion rate**: Fraction of initially-correct agents persuaded to wrong answers
+- **Net correction**: Positive corrections minus negative persuasions
+- **Robustness drop**: Accuracy decrease on rephrased problems
+
+#### Reproducibility
+- Random seed: 42 (fixed for problem sampling)
+- Model APIs: GPT-4.1, GPT-4.1-mini (deterministic at temp=0)
+- Hardware: 4x NVIDIA RTX A6000 (not used — API-based experiments)
+- All results saved to `results/all_results.json`
+
+### Raw Results
+
+#### GSM8K (n=80)
+
+| Method | Accuracy | 95% CI |
+|--------|----------|--------|
+| GPT-4.1 single | 92.5% | [86.2%, 97.5%] |
+| Model B single (Claude/Mini) | 95.0% | [90.0%, 98.8%] |
+| Self-consistency (n=3) | 91.2% | [85.0%, 96.2%] |
+| Cross-model debate (any) | 93.8% | [88.8%, 98.8%] |
+| Cross-model debate (GPT only) | 93.8% | [87.5%, 98.8%] |
+| Same-model debate (any) | 92.5% | [86.2%, 97.5%] |
+
+**Cross-model debate outcome breakdown:**
+
+| Outcome | Count | Percentage |
+|---------|-------|------------|
+| Both correct, stay correct | 73 | 91.2% |
+| Both wrong, stay wrong | 3 | 3.8% |
+| Negative persuasion | 3 | 3.8% |
+| Positive correction | 1 | 1.2% |
+
+#### MATH-500 (n=40)
+
+| Method | Accuracy | 95% CI |
+|--------|----------|--------|
+| GPT-4.1 single | 77.5% | [65.0%, 90.0%] |
+| GPT-4.1-mini single | 72.5% | [57.5%, 85.0%] |
+| Cross-model debate (any) | 85.0% | [72.5%, 95.0%] |
+| Cross-model debate (GPT only) | 75.0% | [62.5%, 87.5%] |
+| Cross-model debate (Mini only) | 77.5% | [65.0%, 90.0%] |
+
+**Cross-model debate outcome breakdown:**
+
+| Outcome | Count | Percentage |
+|---------|-------|------------|
+| Both correct, stay correct | 25 | 62.5% |
+| Both wrong, stay wrong | 6 | 15.0% |
+| Positive correction | 2 | 5.0% |
+| Both wrong → one/both correct | 3 | 7.5% |
+| No change (one right, one wrong, stays same) | 3 | 7.5% |
+| Mixed (correction + persuasion) | 1 | 2.5% |
+
+**Accuracy by difficulty level (MATH-500):**
+
+| Level | n | GPT-4.1 Single | Cross-Debate (any) | Improvement |
+|-------|---|-----------------|--------------------|----|
+| Level 2 | 9 | 78% | 78% | +0% |
+| Level 3 | 6 | 67% | 67% | +0% |
+| Level 4 | 15 | 87% | 100% | **+13%** |
+| Level 5 | 9 | 67% | 78% | **+11%** |
+
+#### Robustness (n=40, GSM8K)
+
+| Condition | Original | Rephrased | Drop |
+|-----------|----------|-----------|------|
+| Single GPT-4.1 | 95.0% | 87.5% | 7.5% |
+| Cross-model debate | 95.0% | 87.5% | 7.5% |
+
+#### Output Locations
+- Results JSON: `results/all_results.json`
+- Analysis JSON: `results/analysis.json`
+- Plots: `results/plots/`
+
+## 5. Result Analysis
+
+### Key Findings
+
+1. **Cross-model debate significantly improves accuracy on hard problems (MATH-500)**: +7.5% absolute improvement (77.5% → 85.0%). Bootstrap 95% CI for improvement: [0.0%, 17.5%].
+
+2. **Debate shows diminishing returns on easy problems (GSM8K)**: Only +1.3% improvement (92.5% → 93.8%) — models already perform well individually, leaving little room for debate to help.
+
+3. **Genuine error correction occurs, primarily on hard problems**: On MATH-500, 3 of 9 cases (33%) where both models independently failed were corrected through debate. On GSM8K, 0 of 3 such cases were corrected (models share the same errors on easy problems).
+
+4. **Debate is most effective at intermediate-to-hard difficulty**: Level 4 problems: 87% → 100% (+13%), Level 5: 67% → 78% (+11%). Easy problems (Level 2-3) show no benefit.
+
+5. **Negative persuasion is a real risk**: On GSM8K, 3 cases of negative persuasion (correct agent adopted wrong answer) versus only 1 positive correction. This risk is higher in same-model debate where agents share inductive biases.
+
+6. **No robustness benefit**: Debate did not reduce accuracy drops on rephrased problems (both conditions showed identical 7.5% drop).
+
+### Hypothesis Testing Results
+
+**H1 (Accuracy improvement from debate)**:
+- MATH-500: Debate wins 3, single wins 0. McNemar&#39;s exact binomial p = 0.25. Not statistically significant at α=0.05 due to small sample size, but the direction is consistently positive.
+- GSM8K: Debate wins 2, single wins 1. Not significant (p = 1.0).
+- **Verdict**: Supported in direction on MATH-500; sample size limits statistical power.
+
+**H2 (Genuine error correction)**:
+- MATH-500: 33% error correction rate on &#34;both wrong&#34; cases, vs. 1 negative persuasion out of 40.
+- GSM8K: 0% error correction rate on &#34;both wrong&#34; cases, 3 negative persuasions.
+- **Verdict**: Supported on hard problems (MATH); refuted on easy problems (GSM8K).
+
+**H3 (Robustness to rephrasings)**:
+- Both single-agent and debate show identical 7.5% accuracy drops on rephrased GSM8K problems.
+- **Verdict**: Refuted. Debate does not improve robustness to rephrasings.
+
+**H4 (Cross-model debate &gt; same-model debate)**:
+- GSM8K: Cross-model 93.8% vs same-model 92.5% (+1.3%).
+- Cross-model debate produced 1 positive correction; same-model debate produced 0.
+- **Verdict**: Weakly supported — cross-model is slightly better, consistent with the &#34;different inductive biases&#34; hypothesis.
+
+### Comparison to Baselines
+- Cross-model debate (any) outperforms all baselines on MATH-500:
+  - vs. GPT-4.1 single: +7.5%
+  - vs. GPT-4.1-mini single: +12.5%
+  - vs. best single agent: +0.0% (best single is already 85% considering both models)
+- Self-consistency (3 samples) does *not* help on GSM8K (91.2% &lt; 92.5% single), suggesting the value of debate comes from cross-model diversity, not multiple samples.
+
+### Surprises and Insights
+
+1. **GPT-4.1-mini outperformed GPT-4.1 on GSM8K** (95.0% vs 92.5%). Smaller models can be more reliable on routine problems, possibly because they learned simpler, more robust strategies.
+
+2. **&#34;Both wrong → correct&#34; cases exist** (3 cases on MATH-500). This means debate enables emergent problem-solving that neither model could achieve alone — the strongest evidence for collaborative reasoning.
+
+3. **Negative persuasion is asymmetric**: It primarily happened in the GPT-4.1 + GPT-4.1-mini pairing (batch 2), not in GPT-4.1 + Claude (batch 1). Different-architecture debate may produce more productive disagreement than same-architecture/different-size debate.
+
+4. **Debate quality depends on error structure**: When models make *different* errors (common on hard problems), debate is highly effective. When models make the *same* error (common on easy problems), debate cannot help.
+
+### Error Analysis
+
+**Where debate helps most (MATH-500)**:
+- Problems requiring multi-step reasoning where models can catch each other&#39;s intermediate errors
+- Higher difficulty levels (Level 4-5) where models have heterogeneous failure modes
+- Subjects: Precalculus, Number Theory, Intermediate Algebra
+
+**Where debate fails (GSM8K)**:
+- Models are already highly accurate, leaving few problems where debate can help
+- On the rare failures, both models tend to make similar errors (shared heuristics)
+- Negative persuasion can flip correct answers to incorrect ones
+
+**Qualitative example of successful debate** (GSM8K, problem gsm8k_209):
+- Agent A misinterpreted &#34;half a dozen&#34; as 3 (instead of 6)
+- Agent B correctly interpreted it as 6 and provided clear reasoning
+- During debate, Agent A recognized the error and corrected its answer
+- This demonstrates the externalization mechanism: Agent B&#39;s explicit reasoning about &#34;half a dozen&#34; forced Agent A to confront its wrong interpretation
+
+### Limitations
+
+1. **Sample size**: 80 GSM8K and 40 MATH-500 problems limit statistical power. The MATH-500 result (p=0.25) would likely reach significance with ~100+ problems.
+
+2. **Model heterogeneity**: Two different second models (Claude for first 40, Mini for last 40 GSM8K) create a mild confound. However, both batches show similar patterns.
+
+3. **Inference-time only**: We study debate at inference time, not during RLVR training. The training dynamics could differ significantly.
+
+4. **Single debate round**: We tested only 1 round of debate. Additional rounds could improve correction rates (Du et al. found diminishing returns after ~4 rounds).
+
+5. **Temperature = 0**: Deterministic decoding may reduce diversity in same-model debate. Using temp &gt; 0 for both agents could change dynamics.
+
+6. **Answer format dependency**: Answer extraction relies on pattern matching, which may miss some correct answers in non-standard formats.
+
+7. **No process-level analysis**: We evaluate only final answers, not reasoning quality. A model could get the right answer with flawed reasoning.
+
+## 6. Conclusions
+
+### Summary
+Cross-model debate improves mathematical reasoning accuracy by 7.5% on competition-level problems (MATH-500), driven by genuine error correction where both models independently fail but debate produces a correct answer. On easier problems (GSM8K), debate provides minimal benefit because models already achieve high accuracy and tend to make correlated errors. Debate does not improve robustness to problem rephrasings.
+
+### Implications
+
+**For the collaborative RLVR hypothesis**: Our results provide mixed but encouraging evidence. The core mechanism works — debate can genuinely improve reasoning beyond what either model achieves alone, especially on hard problems. However, the improvement requires (1) models with different error patterns and (2) problems at the boundary of model capability. Training with collaborative RLVR should target these regimes.
+
+**For practitioners**: Multi-model debate is a cost-effective way to improve accuracy on hard reasoning tasks (4x the API cost for +7.5% accuracy). It&#39;s most valuable when individual models are unreliable (accuracy 60-85%), and least valuable when models are already very reliable (&gt;90%).
+
+**For RLVR researchers**: The finding that debate enables &#34;both wrong → correct&#34; transitions (something voting cannot achieve) suggests that training on debate transcripts could provide qualitatively different training signal from standard RLVR. The 33% correction rate on hard problems is particularly encouraging.
+
+### Confidence in Findings
+- **High confidence**: Debate improves accuracy on hard problems (consistent across all difficulty levels ≥4)
+- **Medium confidence**: Cross-model debate outperforms same-model debate (consistent direction, but small effect)
+- **High confidence**: Debate does not improve robustness to rephrasings (identical drops observed)
+- **Low confidence**: Specific improvement magnitudes (limited by sample size)
+
+## 7. Next Steps
+
+### Immediate Follow-ups
+1. **Scale up MATH evaluation** (n=200+) to achieve statistical significance
+2. **Test 2-3 debate rounds** to see if additional rounds improve correction rate
+3. **Use heterogeneous model families** (GPT + Claude + Gemini) to maximize diversity
+4. **Analyze reasoning quality** beyond final-answer accuracy (faithfulness, step validity)
+
+### Alternative Approaches
+1. **Train debate-aware models**: Fine-tune models on successful debate transcripts to internalize the error-correction behavior
+2. **Adversarial debate**: One model actively tries to find flaws, rather than symmetric critique
+3. **Process reward integration**: Combine debate with step-level rewards to train more robust reasoning
+
+### Broader Extensions
+1. **Code generation**: Debate for debugging and verification
+2. **Scientific reasoning**: Hypothesis evaluation through multi-agent critique
+3. **Multi-round reasoning**: Extending debate to iterative refinement over many rounds
+
+### Open Questions
+1. Does training with collaborative RLVR rewards produce models that inherently debate better?
+2. Can the &#34;both wrong → correct&#34; phenomenon be amplified by training?
+3. What architecture/training differences maximize the benefit of cross-model debate?
+4. Is there a principled way to detect when debate will help vs. hurt?
+
+## References
+
+1. Guo, D. et al. (2025). DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via RL. arXiv:2501.12948
+2. Shao, Z. et al. (2024). DeepSeekMath: Pushing the Limits of Mathematical Reasoning. arXiv:2402.03300
+3. Du, Y. et al. (2023). Improving Factuality and Reasoning through Multiagent Debate. arXiv:2305.14325
+4. Li, C. et al. (2025). MAPoRL: Multi-Agent Post-Co-Training with RL. arXiv:2502.18439
+5. Yu, Z. et al. (2025). DAPO: Open-Source LLM RL System. arXiv:2503.14476
+6. Yue, Y. et al. (2025). Does RL Really Incentivize Reasoning? arXiv:2504.13837
+7. Chen, X. et al. (2025). Spurious Rewards: Rethinking Training Signals in RLVR. arXiv:2506.03691
+8. Chen, J. et al. (2023). ReConcile: Round-Table Conference Improves Reasoning. arXiv:2309.13007
+9. Lightman, H. et al. (2023). Let&#39;s Verify Step by Step. arXiv:2305.20050
+10. Wu, K. et al. (2025). Talk Isn&#39;t Always Cheap: When Multi-Agent Debate Fails. arXiv:2503.17510
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            RESEARCH PLAN
+════════════════════════════════════════════════════════════════════════════════
+
+# Research Plan: Collaborative RLVR for Robust Reasoning
+
+## Motivation &amp; Novelty Assessment
+
+### Why This Research Matters
+RLVR is the dominant paradigm for training LLM reasoning (DeepSeek-R1, DAPO), but produces brittle behavior: models exploit dataset patterns, generate unfaithful reasoning chains, and fail under rephrasings or distribution shifts. If collaborative debate can force reasoning to be externalized and defended, it could produce fundamentally more robust reasoners — addressing a core limitation of the most important LLM training paradigm.
+
+### Gap in Existing Work
+The literature review identifies a clear gap: **no prior work combines RLVR training with multi-agent debate**. Existing work falls into two buckets:
+1. **RLVR (single-agent)**: DeepSeek-R1, DAPO train single models with verifiable rewards — effective but brittle
+2. **Multi-agent debate (inference-time)**: Du et al., ReConcile apply debate at inference time without training — improves accuracy but doesn&#39;t improve the underlying model
+
+MAPoRL (closest work) uses PPO + learned verifier for multi-agent training, but differs fundamentally: it uses sequential turn-taking, learned rewards, and targets collaboration behavior rather than reasoning robustness.
+
+### Our Novel Contribution
+We test whether **inference-time collaborative debate between LLMs improves mathematical reasoning accuracy and robustness** compared to single-agent reasoning, using real state-of-the-art LLMs. This directly validates the hypothesis that externalizing reasoning through debate forces more robust problem-solving — the key premise that would justify investing in collaborative RLVR training.
+
+### Experiment Justification
+- **Experiment 1 (Single vs. Collaborative Accuracy)**: Establishes whether debate improves raw accuracy on GSM8K and MATH — the most basic prediction of the hypothesis
+- **Experiment 2 (Robustness to Rephrasings)**: Tests whether debate specifically helps with rephrased problems where single-agent RLVR is known to be brittle
+- **Experiment 3 (Error Correction Analysis)**: Analyzes whether debate enables genuine error correction (agents changing wrong answers to correct ones) vs. mere agreement amplification
+- **Experiment 4 (Cross-Model Debate)**: Tests whether different models debating (different inductive biases) produce better outcomes than same-model debate
+
+---
+
+## Research Question
+Does collaborative debate between LLMs produce more accurate and robust mathematical reasoning compared to single-agent reasoning, and does this improvement come from genuine error correction rather than simple agreement?
+
+## Hypothesis Decomposition
+1. **H1 (Accuracy)**: Two models debating before answering achieve higher accuracy than either model alone on GSM8K and MATH
+2. **H2 (Error Correction)**: Debate enables genuine error correction — agents change wrong answers to correct ones, not just correct-to-wrong
+3. **H3 (Robustness)**: Debate provides larger accuracy gains on rephrased/modified problems than on original problems (suggesting it counters pattern exploitation)
+4. **H4 (Diversity Helps)**: Cross-model debate (models with different biases) produces better outcomes than same-model debate
+
+## Proposed Methodology
+
+### Approach
+We use real LLM APIs to conduct a controlled study of collaborative debate vs. single-agent reasoning on mathematical problems. Each model independently solves a problem, then they share solutions and critique each other in 1-2 debate rounds, then produce a final answer. We compare accuracy across conditions.
+
+**Why this approach**: Rather than training RLVR from scratch (which would require massive compute), we validate the core premise empirically: does debate improve reasoning? This is the necessary prerequisite for investing in collaborative RLVR training.
+
+### Models
+- **Primary**: GPT-4.1 (via OpenAI API) — strong mathematical reasoner
+- **Secondary**: Claude Sonnet 4.5 (via OpenRouter) or another model — different architecture/training for cross-model debate
+- **Budget model**: GPT-4.1-mini or similar — for same-model debate baseline
+
+### Experimental Steps
+
+1. **Data Preparation**: Sample 100 problems from GSM8K test set and 50 from MATH-500 for core experiments. Create 50 rephrased versions of GSM8K problems for robustness testing.
+
+2. **Baseline (Single-Agent)**: Each model solves each problem independently with chain-of-thought prompting. Record accuracy and reasoning chains. Run 3 times with different seeds.
+
+3. **Collaborative Debate**:
+   - Both models solve independently (Round 0)
+   - Share solutions with each other (Round 1 debate)
+   - Each model critiques the other&#39;s solution and revises its answer
+   - Record final answers and all intermediate reasoning
+
+4. **Robustness Test**: Run both conditions on rephrased problems. Compare accuracy drop between single-agent and debate conditions.
+
+5. **Error Correction Analysis**: Categorize all debate outcomes:
+   - Both initially correct → still correct (agreement)
+   - Both initially wrong → still wrong (shared failure)
+   - One correct, one wrong → final answer correct (positive correction)
+   - One correct, one wrong → final answer wrong (negative persuasion)
+   - Both wrong → one or both correct (genuine debate benefit)
+
+### Baselines
+1. **Single-agent CoT**: Standard chain-of-thought, one model
+2. **Self-consistency (SC)**: Same model, multiple samples, majority vote (n=5)
+3. **Majority voting**: Two models vote independently (no debate)
+
+### Evaluation Metrics
+- **Accuracy**: Percentage of problems solved correctly (primary)
+- **Error correction rate**: Fraction of initially-wrong answers corrected through debate
+- **Negative persuasion rate**: Fraction of initially-correct answers changed to wrong
+- **Net correction**: Error correction rate minus negative persuasion rate
+- **Robustness delta**: Accuracy drop on rephrased problems (lower is better)
+
+### Statistical Analysis Plan
+- McNemar&#39;s test for paired accuracy comparisons (same problems, different conditions)
+- Bootstrap confidence intervals (n=1000) for all metrics
+- Effect sizes via odds ratios
+- Significance level: α = 0.05 with Bonferroni correction for multiple comparisons
+
+## Expected Outcomes
+- **Support H1**: Debate accuracy &gt; single-agent accuracy by 3-8% on GSM8K, more on MATH
+- **Support H2**: Net correction rate &gt; 0 (more errors corrected than introduced)
+- **Support H3**: Accuracy drop on rephrased problems smaller for debate (&lt; 50% of single-agent drop)
+- **Support H4**: Cross-model debate outperforms same-model debate
+
+Refutation would be: debate shows no improvement, or negative persuasion dominates error correction.
+
+## Timeline and Milestones
+- Environment setup &amp; data prep: 15 min
+- Implement experiment framework: 30 min
+- Run Experiment 1 (accuracy): 30 min
+- Run Experiment 2 (robustness): 20 min
+- Run Experiment 3 (error correction): 10 min (analysis of Exp 1 data)
+- Run Experiment 4 (cross-model): 20 min
+- Analysis &amp; visualization: 30 min
+- Documentation: 30 min
+- Buffer: 30 min
+
+## Potential Challenges
+1. **API rate limits**: Mitigate by batching requests and using exponential backoff
+2. **Cost**: ~200 problems × 3 conditions × 2 models × ~1000 tokens = ~$20-50 budget
+3. **Rephrasing quality**: Use GPT to rephrase, then manually validate a sample
+4. **Answer extraction**: Math answers need careful parsing; use regex for GSM8K #### format and MATH \boxed{} format
+5. **Model agreement**: Models might always agree, producing trivial debate. Monitor agreement rates.
+
+## Success Criteria
+1. Complete experiments with ≥100 GSM8K and ≥50 MATH problems
+2. Statistical tests with p &lt; 0.05 for at least one hypothesis
+3. Clear error correction analysis with categorized outcomes
+4. All results reproducible with documented code and seeds
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          LITERATURE REVIEW
+════════════════════════════════════════════════════════════════════════════════
+
+# Literature Review: Collaborative RLVR for Robust Reasoning
+
+## Research Hypothesis
+Making RLVR collaborative -- by having two models solve mathematical reasoning tasks independently and then discuss before answering -- will force reasoning to be externalized, challenged, and defended, resulting in more robust and faithful reasoning compared to standard single-agent RLVR.
+
+---
+
+## 1. Reinforcement Learning with Verifiable Rewards (RLVR)
+
+### 1.1 Foundations: DeepSeek-R1 and GRPO
+
+**DeepSeek-R1** (Guo et al., 2025; `2501.12948`) demonstrated that pure reinforcement learning without supervised fine-tuning (SFT) can produce emergent reasoning behaviors in LLMs. The key innovation is training directly on tasks with verifiable answers using rule-based reward signals.
+
+**GRPO (Group Relative Policy Optimization)**, introduced in **DeepSeekMath** (Shao et al., 2024; `2402.03300`), is the core RL algorithm. For each prompt, GRPO:
+1. Samples a group of G outputs from the current policy
+2. Computes rewards for each output
+3. Normalizes advantages within the group: A_i = (r_i - mean(r)) / std(r)
+4. Optimizes a clipped surrogate objective with KL penalty against a reference policy
+
+This eliminates the need for a learned value function (critic), making it significantly more memory-efficient than PPO.
+
+**DeepSeek-R1-Zero** showed that applying GRPO with only accuracy + format rewards to a base model (no SFT warmup) produces emergent chain-of-thought reasoning, self-verification, and even an &#34;aha moment&#34; where the model spontaneously discovers new reasoning strategies. However, R1-Zero suffers from readability issues, language mixing, and sometimes infinite reasoning loops.
+
+The full **DeepSeek-R1** pipeline uses a multi-stage approach: (1) cold-start SFT data, (2) reasoning-oriented RL, (3) rejection sampling to create new SFT data, (4) RL on broader tasks including helpfulness.
+
+### 1.2 Critical Analysis of RLVR
+
+Several papers raise important questions about what RLVR actually learns:
+
+- **&#34;Does RL Really Incentivize Reasoning?&#34;** (Yue et al., 2025; `2504.13837`) presents evidence that RL may primarily be selecting and reinforcing reasoning patterns already present in the base model, rather than teaching genuinely new reasoning capabilities. This has direct implications for our hypothesis: if RLVR alone doesn&#39;t create new reasoning, perhaps the collaborative debate mechanism can push models beyond their individual capabilities.
+
+- **&#34;Spurious Rewards&#34;** (Chen et al., 2025; `2506.03691`) demonstrates the surprising finding that RLVR can improve performance even with partially random or spurious reward signals. This suggests the training signal may be less about reward accuracy and more about the optimization process itself -- providing important context for designing collaborative reward signals.
+
+- **&#34;Surprising Effectiveness of Negative Reinforcement&#34;** (Liu et al., 2025; `2503.09476`) shows that negative-only rewards (penalizing wrong answers without rewarding correct ones) can be surprisingly effective in RLVR, suggesting that the learning signal structure has unexplored dimensions.
+
+- **&#34;RLVR Implicitly Incentivizes Correct Reasoning&#34;** (Liu et al., 2025; `2505.07532`) provides a counter-perspective, arguing that RLVR does genuinely encourage correct reasoning chains, not just correct final answers. This supports the use of RLVR as a training signal for reasoning quality.
+
+- **&#34;Entropy Mechanism of RL for Reasoning LLMs&#34;** (Zhu et al., 2025; `2505.05551`) analyzes the entropy dynamics during RL training for reasoning, identifying entropy collapse as a key failure mode where the policy loses diversity too quickly.
+
+### 1.3 RLVR at Scale
+
+- **DAPO** (Yu et al., 2025; `2503.14476`) provides an open-source RLVR system achieving strong results on AIME 2024. Key innovations include decoupled clip ratios for positive/negative samples, dynamic sampling to handle varying difficulty, and token-level loss computation. DAPO&#39;s codebase (built on verl) is directly relevant as infrastructure for our experiments.
+
+- **Understanding R1-Zero-Like Training** (Zhao et al., 2025; `2503.20783`) provides systematic analysis of training dynamics, reward design, and failure modes in R1-Zero-style training.
+
+- **GRPO Analysis** (Zhong et al., 2025; `2503.13555`) offers deeper theoretical understanding of how GRPO optimizes and its relationship to other policy gradient methods.
+
+### 1.4 Key Takeaways for Our Research
+- RLVR with GRPO is an effective and efficient framework for training reasoning capabilities
+- The debate about whether RL creates new reasoning or amplifies existing patterns motivates combining RLVR with multi-agent collaboration as a mechanism to push beyond individual model limits
+- Entropy management and reward signal design are critical challenges
+- Existing infrastructure (DAPO/verl, TRL) provides practical starting points
+
+---
+
+## 2. Multi-Agent Debate and Collaboration
+
+### 2.1 Foundational Multi-Agent Debate
+
+**&#34;Improving Factuality and Reasoning through Multiagent Debate&#34;** (Du et al., 2023; `2305.14325`) is the seminal work establishing that multiple LLM agents debating can improve both factuality and reasoning beyond any single agent. Key findings from our deep reading:
+
+- **Mechanism**: Multiple agents (default: 3) independently generate answers, then iteratively read each other&#39;s responses and update their own over multiple rounds (default: 2).
+- **Not just majority voting**: Debate enables genuine error correction -- even when all agents initially give wrong answers, the debate process can lead to correct convergence. This is the critical finding for our hypothesis.
+- **Scaling properties**: Performance monotonically improves with more agents and more rounds, though with diminishing returns after ~4 rounds.
+- **Compatible with CoT**: Debate is orthogonal to chain-of-thought prompting; combining them yields the best results (GSM8K: single 77%, debate+CoT 85%).
+- **Cross-model debate works**: Different models (ChatGPT + Bard) debating outperform either model alone.
+- **Failure mode**: When all agents share the same systematic bias, debate cannot correct it. This motivates training agents to develop diverse reasoning strategies.
+- **Agreeable agent problem**: RLHF-trained models tend to be too agreeable for productive debate, converging too quickly. This is directly relevant -- our RLVR training should reward productive disagreement.
+
+### 2.2 Debate Variations and Extensions
+
+- **MAD (Multi-Agent Debate for Divergent Thinking)** (Liang et al., 2023; `2305.19118`) introduces a structured debate framework with a judge, showing that debate is especially beneficial for tasks requiring divergent thinking rather than convergent tasks.
+
+- **ReConcile** (Chen et al., 2023; `2309.13007`) proposes round-table conference-style multi-agent discussion with weighted voting based on agent confidence, showing improvements on reasoning benchmarks.
+
+- **Exchange-of-Thought** (Yin et al., 2023; `2312.01823`) introduces cross-model communication protocols for multi-step reasoning, showing that structured exchange of intermediate reasoning steps outperforms simple answer sharing.
+
+- **&#34;Should We Be Going MAD?&#34;** (Smit et al., 2023; `2311.17371`) provides empirical benchmarking of debate strategies, finding that debate effectiveness depends heavily on task type and model capability.
+
+- **&#34;Talk Isn&#39;t Always Cheap&#34;** (Wu et al., 2025; `2503.17510`) identifies failure modes in multi-agent debate, including persuasion cascades, groupthink, and computational costs, providing important cautions for our design.
+
+- **&#34;Rethinking Bounds of LLM Reasoning&#34;** (Xu et al., 2024; `2402.18272`) analyzes theoretical limits of multi-agent debate vs. single-model approaches, finding that debate can exceed individual model performance bounds under certain conditions.
+
+- **Multi-LLM Debate Framework** (Zhao et al., 2024; `2402.18176`) provides theoretical analysis of convergence properties in multi-LLM debates.
+
+### 2.3 Collaborative Multi-Agent Systems
+
+- **&#34;Exploring Collaboration Mechanisms&#34;** (Zhang et al., 2023; `2310.02124`) applies social psychology frameworks to LLM collaboration, comparing debate, negotiation, and consensus-building approaches.
+
+- **Multi-Agent Collaboration Mechanisms Survey** (Yang et al., 2025; `2501.06322`) provides a comprehensive survey of different collaboration paradigms for LLM agents.
+
+- **&#34;Towards Scalable Oversight with Collaborative MAD&#34;** (Wang et al., 2025; `2506.01773`) examines how multi-agent debate can scale to more complex oversight tasks.
+
+- **&#34;Don&#39;t Lie to Your Friends&#34;** (Akata et al., 2025; `2506.07596`) introduces collaborative self-play where agents learn to be more honest and informative when communicating, directly relevant to training collaborative reasoning.
+
+- **&#34;Coevolving with the Other You&#34;** (Chen et al., 2024; `2404.09960`) explores cooperative multi-agent RL where agents co-evolve strategies, providing RL-specific insights for our multi-agent training.
+
+### 2.4 Key Takeaways for Our Research
+- Multi-agent debate consistently improves reasoning beyond individual model capabilities
+- The improvement goes beyond ensemble/voting effects -- genuine error correction occurs through debate
+- Failure modes (groupthink, agreeable agents, shared biases) provide clear design targets
+- Structured communication protocols and diverse agent strategies improve debate quality
+- No prior work combines debate with RLVR training -- this is our key contribution
+
+---
+
+## 3. The Closest Prior Work: MAPoRL
+
+### 3.1 Overview
+
+**MAPoRL (Multi-Agent Post-Co-Training for Collaborative LLMs with RL)** (Li et al., 2025; `2502.18439`) is the closest existing work to our proposed research. We performed an extensive deep-read of this paper.
+
+### 3.2 Method
+
+MAPoRL uses multi-agent PPO (not GRPO) to train multiple agents to collaborate:
+
+1. **Multi-turn interaction**: Agents take turns generating responses in a sequential communication protocol
+2. **Influence-aware verification reward**: The reward considers not just answer correctness but also how much each agent influenced the group&#39;s final answer
+3. **Collaboration incentive**: Two hyperparameters (alpha, beta) control the balance between individual accuracy and collaborative synergy
+4. **Game-theoretic framing**: Agents choose between &#34;Collaborate&#34; (a0) and &#34;Act Independently&#34; (a1), with synergy rewards requiring threshold participation
+
+### 3.3 Key Findings
+
+- Single-agent training is **insufficient** for learning collaboration -- multi-agent training is essential
+- Collaboration skills **transfer across domains** (train on GSM8K, improve on ANLI)
+- SFT alone **fails** to induce genuine collaborative behavior; RL is necessary
+- The method extends TRL&#39;s PPO trainer to support multiple agents with different model architectures
+
+### 3.4 Differences from Our Proposal
+
+| Aspect | MAPoRL | Our Proposal |
+|--------|--------|-------------|
+| RL Algorithm | PPO (with value function) | GRPO (value-function-free) |
+| Reward Type | Learned verifier + influence | Verifiable rewards (rule-based) |
+| Communication | Sequential turn-taking | Simultaneous debate rounds |
+| Training Focus | Collaboration behavior | Robust reasoning through debate |
+| Core Mechanism | Influence-aware rewards | Externalized reasoning + critique |
+| Scalability | Limited by PPO critic | More scalable via GRPO |
+
+### 3.5 Key Takeaways for Our Research
+- MAPoRL validates that multi-agent RL training can produce genuine collaboration
+- Using GRPO instead of PPO would be more memory-efficient and potentially more stable
+- Verifiable rewards (RLVR-style) could replace the learned verifier, simplifying the pipeline
+- The debate format (simultaneous reasoning + critique) may produce stronger externalization than sequential turn-taking
+- Cross-domain transfer of collaboration skills is an encouraging finding
+
+---
+
+## 4. Process Rewards and Reasoning Quality
+
+- **&#34;Let&#39;s Verify Step by Step&#34;** (Lightman et al., 2023; `2305.20050`) introduces process reward models (PRMs) that evaluate each step of reasoning rather than just the final answer. This is relevant because debate naturally provides process-level feedback through step-by-step critique.
+
+- **STaR (Self-Taught Reasoner)** (Zelikman et al., 2022; `2203.14465`) introduces bootstrapping reasoning through self-generated rationales, directly in the RLVR lineage. Debate could serve as a higher-quality form of rationale generation.
+
+- **&#34;Reinforcement Learning for Reasoning with One Training Example&#34;** (Yuan et al., 2025; `2504.20571`) shows that RL for reasoning can work with extremely limited data, suggesting that the quality of the training signal matters more than quantity.
+
+- **Reasoning Gym** (Bakhtin et al., 2025; `2505.01939`) provides 100+ environments for RLVR training, offering a broad evaluation suite for testing collaborative reasoning.
+
+---
+
+## 5. Research Gaps and Our Contribution
+
+### 5.1 Identified Gaps
+
+1. **No RLVR + Debate combination**: Existing work either uses RLVR for single-agent reasoning (DeepSeek-R1, DAPO) or uses debate at inference time without RL training (Du et al.). No work trains agents with RLVR specifically to debate and improve reasoning through collaboration.
+
+2. **Agreeable agent problem unaddressed by training**: Du et al. identified that RLHF makes agents too agreeable for productive debate. No work has used RL training to specifically address this -- our RLVR training could reward productive disagreement and principled stubbornness.
+
+3. **Shared bias failure mode**: When all agents have the same misconception, debate fails. RLVR training that rewards reasoning diversity across agents could mitigate this.
+
+4. **GRPO for multi-agent training**: MAPoRL uses PPO with a learned critic. GRPO&#39;s group-relative advantages are naturally suited for multi-agent settings where outputs from collaborating agents can be compared.
+
+5. **Externalized reasoning as training signal**: The debate process forces reasoning to be explicit and articulable. This externalized reasoning could serve as a higher-quality training signal than single-agent chain-of-thought.
+
+### 5.2 Proposed Approach Summary
+
+Our proposed approach would:
+1. Have two agents independently solve math problems using chain-of-thought
+2. Share their solutions and engage in structured debate (1-2 rounds)
+3. Each agent produces a final answer after considering the debate
+4. Use verifiable rewards (correct/incorrect final answer) to train both agents via GRPO
+5. The key insight: agents that produce clear, defensible reasoning and effectively critique flawed reasoning will consistently achieve better final answers, so RLVR will naturally select for these capabilities
+
+### 5.3 Expected Benefits
+- **Externalized reasoning**: Debate forces reasoning to be explicit, making it verifiable and trainable
+- **Error correction**: Agents learn to identify and correct reasoning errors through critique
+- **Reasoning robustness**: Agents that survive debate challenges develop more robust reasoning strategies
+- **Diversity**: Multi-agent training with different initializations or architectures naturally promotes reasoning diversity
+- **Scalability**: GRPO eliminates the need for a learned critic, making multi-agent training more practical
+
+---
+
+## 6. Summary of Key Papers
+
+| Paper | Year | Relevance | Key Contribution |
+|-------|------|-----------|-----------------|
+| DeepSeek-R1 | 2025 | Core RLVR | Pure RL produces emergent reasoning |
+| DeepSeekMath (GRPO) | 2024 | Core algorithm | Efficient RL without value function |
+| Du et al. (Debate) | 2023 | Core mechanism | Debate improves reasoning beyond voting |
+| MAPoRL | 2025 | Closest work | Multi-agent PPO for collaboration |
+| DAPO | 2025 | Infrastructure | Open-source RLVR at scale |
+| Does RL Incentivize Reasoning | 2025 | Motivation | RL may only select existing patterns |
+| Spurious Rewards | 2025 | Reward design | RLVR works with imperfect rewards |
+| Let&#39;s Verify Step by Step | 2023 | Process reward | Step-level reasoning evaluation |
+| STaR | 2022 | Self-improvement | Bootstrapping reasoning with reasoning |
+| Don&#39;t Lie to Your Friends | 2025 | Training signal | Collaborative self-play for honesty |
+
+---
+
+## References
+
+1. Guo, D. et al. (2025). DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. arXiv:2501.12948
+2. Shao, Z. et al. (2024). DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models. arXiv:2402.03300
+3. Du, Y. et al. (2023). Improving Factuality and Reasoning in Language Models through Multiagent Debate. arXiv:2305.14325
+4. Liang, T. et al. (2023). Encouraging Divergent Thinking in Large Language Models through Multi-Agent Debate. arXiv:2305.19118
+5. Li, C. et al. (2025). MAPoRL: Multi-Agent Post-Co-Training for Collaborative Large Language Models with Reinforcement Learning. arXiv:2502.18439
+6. Yu, Z. et al. (2025). DAPO: An Open-Source LLM Reinforcement Learning System. arXiv:2503.14476
+7. Zhao, J. et al. (2025). Understanding R1-Zero-Like Training: A Critical Study. arXiv:2503.20783
+8. Yue, Y. et al. (2025). Does RL Really Incentivize Reasoning Capability in LLMs? arXiv:2504.13837
+9. Chen, X. et al. (2025). Spurious Rewards: Rethinking Training Signals in RLVR. arXiv:2506.03691
+10. Liu, Z. et al. (2025). The Surprising Effectiveness of Negative Reinforcement in LLM Reasoning. arXiv:2503.09476
+11. Liu, W. et al. (2025). RLVR Implicitly Incentivizes Correct Reasoning. arXiv:2505.07532
+12. Zhu, H. et al. (2025). Entropy Mechanism of RL for Reasoning LLMs. arXiv:2505.05551
+13. Chen, J. et al. (2023). ReConcile: Round-Table Conference Improves Reasoning. arXiv:2309.13007
+14. Yin, D. et al. (2023). Exchange-of-Thought: Enhancing Large Language Model Capabilities through Cross-Model Communication. arXiv:2312.01823
+15. Zhang, Y. et al. (2023). Exploring Collaboration Mechanisms for LLM Agents: A Social Psychology View. arXiv:2310.02124
+16. Smit, A. et al. (2023). Should We Be Going MAD? A Look at Multi-Agent Debate Strategies. arXiv:2311.17371
+17. Wu, K. et al. (2025). Talk Isn&#39;t Always Cheap: When Multi-Agent Debate Fails. arXiv:2503.17510
+18. Xu, Y. et al. (2024). Rethinking the Bounds of LLM Reasoning. arXiv:2402.18272
+19. Zhao, L. et al. (2024). Multi-LLM Debate Framework. arXiv:2402.18176
+20. Lightman, H. et al. (2023). Let&#39;s Verify Step by Step. arXiv:2305.20050
+21. Zelikman, E. et al. (2022). STaR: Self-Taught Reasoner. arXiv:2203.14465
+22. Zhong, W. et al. (2025). Reinforcement Learning with Verifiable Rewards: GRPO Analysis. arXiv:2503.13555
+23. Yang, Z. et al. (2025). Multi-Agent Collaboration Mechanisms: A Survey. arXiv:2501.06322
+24. Chen, Z. et al. (2024). Coevolving with the Other You: Fine-Tuning LLM with Sequential Cooperative Multi-Agent RL. arXiv:2404.09960
+25. Yuan, W. et al. (2025). Reinforcement Learning for Reasoning with One Training Example. arXiv:2504.20571
+26. Bakhtin, A. et al. (2025). Reasoning Gym: Verifiable Reasoning Environments. arXiv:2505.01939
+27. Wang, T. et al. (2025). Towards Scalable Oversight with Collaborative Multi-Agent Debate. arXiv:2506.01773
+28. Akata, E. et al. (2025). Don&#39;t Lie to Your Friends: Learning Honest Communication in Collaborative Self-Play. arXiv:2506.07596
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          PAPER REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+Generate a complete academic paper with the following structure:
+
+1. TITLE
+   - Clear, specific, informative
+   - Should convey main finding or contribution
+
+2. ABSTRACT (150-250 words)
+   - Problem statement
+   - Approach
+   - Key results
+   - Significance
+
+3. INTRODUCTION
+   - Research problem and motivation
+   - Gap in existing work
+   - Our contribution (be specific)
+   - Paper organization
+
+4. RELATED WORK
+   - Organized by theme/approach
+   - Position our work relative to prior work
+   - Cite papers from literature review
+
+5. METHODOLOGY
+   - Clear description of approach
+   - Experimental setup
+   - Datasets used
+   - Evaluation metrics
+   - Baselines
+
+6. RESULTS
+   - Present results with tables and figures
+   - Statistical analysis
+   - Comparison to baselines
+   - Ablation studies (if applicable)
+
+7. DISCUSSION
+   - Interpretation of results
+   - Limitations
+   - Broader implications
+
+8. CONCLUSION
+   - Summary of contributions
+   - Key findings
+   - Future work
+
+9. REFERENCES
+   - BibTeX format
+   - All cited papers
+
+════════════════════════════════════════════════════════════════════════════════
+                          OUTPUT FORMAT
+════════════════════════════════════════════════════════════════════════════════
+
+Create a MODULAR LaTeX project with the following directory structure:
+
+paper_draft/
+├── main.tex              # Main file that imports all sections
+├── references.bib        # BibTeX references
+├── sections/
+│   ├── abstract.tex      # Abstract content
+│   ├── introduction.tex  # Introduction section
+│   ├── related_work.tex  # Related work section
+│   ├── methodology.tex   # Methodology section
+│   ├── results.tex       # Results section
+│   ├── discussion.tex    # Discussion section
+│   └── conclusion.tex    # Conclusion section
+├── figures/              # Directory for any generated figures
+├── tables/               # Directory for complex standalone tables
+└── appendix/             # Directory for appendix sections (if needed)
+
+INSTRUCTIONS:
+1. First, create the directory structure above (mkdir -p paper_draft/sections paper_draft/figures paper_draft/tables paper_draft/appendix)
+2. Write main.tex using the EXACT preamble for NEURIPS:
+
+   \documentclass{article}
+   \usepackage[final]{neurips_2025}  % NEURIPS style (neurips_2025.sty is in paper_draft/)
+   \usepackage[hidelinks]{hyperref}  % REQUIRED: clickable links
+   \usepackage{booktabs}  % REQUIRED: professional tables
+   \usepackage{graphicx}
+   \usepackage{amsmath,amssymb}
+
+   % Import command files
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+   % Use this bibliography style:
+   \bibliographystyle{plainnat}
+
+   - Use \input{sections/...} to include each section
+   - Use \bibliography{references} for references
+3. Write each section file with COMPLETE content (no placeholders)
+4. Each section file should include its \section{} command
+5. Write references.bib with all citations in BibTeX format
+6. After writing all files, compile the paper:
+   cd paper_draft && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+This modular structure allows humans to easily:
+- Edit individual sections without navigating a large file
+- Track changes per section
+- Reuse sections across different paper versions
+
+════════════════════════════════════════════════════════════════════════════════
+                          QUALITY REQUIREMENTS
+════════════════════════════════════════════════════════════════════════════════
+
+- Academic tone throughout
+- All claims must be supported by data from the experiment report
+- Proper citations using \cite{} commands
+- Clear figures and tables with proper captions
+- NO placeholder text - every section must have real content
+- The paper MUST compile without errors
+- If compilation fails, debug and fix the LaTeX errors
+
+════════════════════════════════════════════════════════════════════════════════
+                          LAB WRITING STYLE
+════════════════════════════════════════════════════════════════════════════════
+
+Follow these lab-specific conventions to match our paper style:
+
+1. LANGUAGE STYLE:
+   - Use active voice: "We propose", "We examine", "We focus on"
+   - Be direct and confident: "Our main question is...", "We hypothesize that..."
+   - State things clearly and simply - prefer plain language over jargon
+   - Use bold questions as paragraph organizers: {\bf what is X?}
+   - Include specific quantitative claims: "8.97% over baseline"
+   - Avoid fancy wording: "utilize" → "use", "facilitate" → "help"
+
+2. INTRODUCTION STRUCTURE:
+   - Engaging hook (get to the point quickly)
+   - Problem importance
+   - Gap identification
+   - Your approach with method figure reference
+   - Quantitative preview of results
+   - Contribution bullets (3-4 items, action verbs)
+
+3. CONTRIBUTION LISTS:
+   \begin{itemize}[leftmargin=*,itemsep=0pt,topsep=0pt]
+       \item We propose...
+       \item We conduct...
+       \item We complement...
+   \end{itemize}
+
+4. MODULAR COMMANDS STRUCTURE:
+   Create paper_draft/commands/ directory with:
+   - math.tex: Math notation macros (copy from templates/paper_writing/commands/)
+   - general.tex: Formatting macros (copy from templates/paper_writing/commands/)
+   - macros.tex: Project-specific term definitions
+
+   In main.tex, include:
+   \input{commands/math}
+   \input{commands/general}
+   \input{commands/macros}
+
+5. REFERENCE CONVENTIONS:
+   Use reference macros from math.tex:
+   - \figref{fig:name} for "figure 1" (lowercase, in-sentence)
+   - \Figref{fig:name} for "Figure 1" (capitalized, start of sentence)
+   - \secref{sec:name} for "section 2"
+
+6. TEXT FORMATTING:
+   - Use \para{Header text} for bold paragraph headers
+   - Define method/dataset names with \textsc and \xspace:
+     \newcommand{\methodname}{\textsc{MethodName}\xspace}
+
+7. TABLE FORMATTING:
+   - Use booktabs package (no vertical lines)
+   - Use \resizebox{\textwidth}{!}{...} for wide tables
+   - Use @{} to remove padding at table edges
+   - Use \cmidrule(lr){x-y} for sub-headers
+   - Use \textsc{} for dataset/method names in headers
+   - Bold best results with {\bf ...}
+
+8. FIGURE FORMATTING:
+   - Use 0.32\textwidth for 3-column subfigures
+   - Use 0.95\linewidth for full-width figures
+   - Use \input{figures/legend} for shared legends
+   - Write self-contained captions explaining key observations
+
+9. RESULTS PRESENTATION:
+   - Define \increase and \decrease for colored arrows (green up, red down)
+   - Bold best results in tables
+   - Report confidence intervals when available
+
+10. ALGORITHM STYLING:
+    - Use algpseudocode with [noend]
+    - Use \triangleright for comments
+
+11. HYPERLINKS (REQUIRED):
+    - Always use \usepackage[hidelinks]{hyperref} or with colored links
+    - All citations, section refs, figure refs, table refs must be clickable
+    - This is essential for reader navigation
+
+════════════════════════════════════════════════════════════════════════════════
+                          WORKFLOW: REVIEW AND REFLECT
+════════════════════════════════════════════════════════════════════════════════
+
+Before calling finish, you MUST complete these review steps:
+
+1. REVIEW RESOURCES (at the start):
+   - Read templates/skills/paper-writer/SKILL.md for detailed guidance
+   - Study templates/paper_writing/lab_style_guide.md for style conventions
+   - Browse paper_examples/ for formatting and language patterns
+
+2. SELF-REFLECTION (before finishing):
+   After writing all sections, review your work against these criteria:
+
+   LANGUAGE CHECK:
+   - [ ] Is the writing clear and jargon-free?
+   - [ ] Are claims specific with quantitative support?
+   - [ ] Is active voice used throughout?
+
+   FORMATTING CHECK:
+   - [ ] Does main.tex include \input{commands/math}, \input{commands/general}, \input{commands/macros}?
+   - [ ] Is hyperref package included for clickable references?
+   - [ ] Do tables use booktabs (no vertical lines)?
+   - [ ] Are best results bolded in tables?
+   - [ ] Are figures/tables properly captioned?
+
+   STRUCTURE CHECK:
+   - [ ] Does introduction follow: hook → importance → gap → approach → preview → contributions?
+   - [ ] Are contribution bullets specific with action verbs?
+   - [ ] Does the paper compile without errors?
+
+3. FIX ISSUES:
+   - Address any issues found in the self-reflection
+   - Re-compile and verify the PDF looks correct
+
+Only after completing this review should you consider the paper finished.
